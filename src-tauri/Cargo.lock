@@ -474,6 +474,7 @@ name = "cumt-auto-login"
 version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
+ "libc",
  "local-ip-address",
  "mac_address",
  "regex",
