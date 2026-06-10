@@ -11,12 +11,15 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Microsoft YaHei", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f8f8ff;
+  background: #ffffff;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
 }
 
 #app {
@@ -25,4 +28,7 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding: 16px;
+  box-sizing: border-box;
 }

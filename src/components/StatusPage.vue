@@ -11,7 +11,7 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-[360px] text-center"
+    class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-[360px] text-center"
   >
     <!-- 状态图标 -->
     <div class="text-5xl mb-4">
@@ -36,7 +36,7 @@ const emit = defineEmits<{
     <!-- 返回按钮 -->
     <button
       @click="emit('back')"
-      class="w-full py-2.5 rounded-lg text-white font-medium text-sm transition-all bg-gray-600 hover:bg-gray-700 active:bg-gray-800 cursor-pointer"
+      class="w-full py-3 rounded-lg text-white font-medium text-base transition-all bg-gray-600 hover:bg-gray-700 active:bg-gray-800 cursor-pointer"
     >
       切换/修改账号
     </button>

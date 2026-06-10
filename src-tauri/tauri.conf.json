@@ -18,7 +18,8 @@
         "resizable": false,
         "center": true,
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "fullscreen": false
       }
     ],
     "security": {
@@ -26,7 +27,7 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",

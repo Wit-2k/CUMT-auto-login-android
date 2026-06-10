@@ -65,7 +65,7 @@ defineExpose({
 
 <template>
   <div
-    class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-[360px]"
+    class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-[360px]"
     @keydown="handleKeydown"
   >
     <!-- 标题 -->
@@ -85,8 +85,9 @@ defineExpose({
         <input
           v-model="username"
           type="text"
+          inputmode="numeric"
           placeholder="请输入学号"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
           autofocus
         />
       </div>
@@ -100,8 +101,9 @@ defineExpose({
           <input
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
+            inputmode="text"
             placeholder="请输入密码"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm pr-20"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm pr-20"
           />
           <label
             class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-gray-500 cursor-pointer"
@@ -123,7 +125,7 @@ defineExpose({
         >
         <select
           v-model="operator"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm bg-white appearance-none"
         >
           <option
             v-for="op in operators"
@@ -139,7 +141,7 @@ defineExpose({
       <button
         @click="handleLogin"
         :disabled="loading"
-        class="w-full py-2.5 mt-2 rounded-lg text-white font-medium text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800 cursor-pointer"
+        class="w-full py-3 mt-2 rounded-lg text-white font-medium text-base transition-all disabled:opacity-60 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 active:bg-blue-800 cursor-pointer"
       >
         {{ loading ? "登录中..." : "登 录" }}
       </button>

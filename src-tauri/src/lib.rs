@@ -1,21 +1,27 @@
 mod commands;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri::Manager;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri::tray::TrayIconBuilder;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::auth::perform_login,
             commands::network::check_online,
             commands::config::save_config,
             commands::config::load_config,
-        ])
-        .setup(|app| {
-            // 构建系统托盘菜单
+        ]);
+
+    // 仅在桌面端启用系统托盘
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder.setup(|app| {
             let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = MenuBuilder::new(app)
@@ -42,7 +48,10 @@ pub fn run() {
                 .build(app)?;
 
             Ok(())
-        })
+        });
+    }
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

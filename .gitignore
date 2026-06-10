@@ -33,3 +33,15 @@ desktop.ini
 *.dmg
 *.deb
 *.rpm
+*.apk
+*.aab
+
+# Android
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/build/
+src-tauri/gen/android/capacitor-cordova-android-plugins/build/
+src-tauri/gen/android/local.properties
+src-tauri/gen/android/.idea/
+src-tauri/gen/android/*.iml
+src-tauri/gen/android/gradle.properties

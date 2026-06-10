@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/tauri/tauri.conf.json",
+  "identifier": "com.cumt.autologin",
+  "bundle": {
+    "active": true,
+    "targets": ["apk", "aab"],
+    "android": {
+      "versionCode": 1,
+      "minSdkVersion": 24,
+      "targetSdkVersion": 34,
+      "compileSdkVersion": 34
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "校园网自动登录",
+        "fullscreen": true,
+        "resizable": false
+      }
+    ]
+  }
+}

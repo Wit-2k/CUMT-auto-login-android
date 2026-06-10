@@ -4,18 +4,65 @@ use reqwest::Client;
 use serde_json::Value;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// 获取本机 MAC 地址（去除分隔符，小写）
-fn get_mac_address() -> Result<String, String> {
-    let mac = mac_address::get_mac_address()
-        .map_err(|e| format!("无法获取MAC地址: {}", e))?
-        .ok_or_else(|| "未找到网络接口".to_string())?;
-    Ok(mac.to_string().replace(':', "").replace('-', "").to_lowercase())
+/// 获取本机 IP 地址（跨平台：通过 UDP socket 获取）
+fn get_local_ip() -> Result<String, String> {
+    // 桌面端使用 local-ip-address crate
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        let ip =
+            local_ip_address::local_ip().map_err(|e| format!("无法获取网络信息: {}", e))?;
+        return Ok(ip.to_string());
+    }
+
+    // 移动端通过 UDP socket 获取本地 IP
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0")
+            .map_err(|e| format!("无法绑定socket: {}", e))?;
+        socket
+            .connect("10.2.5.251:80")
+            .map_err(|e| format!("无法获取网络信息: {}", e))?;
+        let addr = socket
+            .local_addr()
+            .map_err(|e| format!("无法获取地址: {}", e))?;
+        Ok(addr.ip().to_string())
+    }
 }
 
-/// 获取本机 IP 地址
-fn get_local_ip() -> Result<String, String> {
-    let ip = local_ip_address::local_ip().map_err(|e| format!("无法获取网络信息: {}", e))?;
-    Ok(ip.to_string())
+/// 获取本机 MAC 地址（去除分隔符，小写）
+fn get_mac_address() -> Result<String, String> {
+    // 桌面端使用 mac_address crate
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        let mac = mac_address::get_mac_address()
+            .map_err(|e| format!("无法获取MAC地址: {}", e))?
+            .ok_or_else(|| "未找到网络接口".to_string())?;
+        return Ok(mac
+            .to_string()
+            .replace(':', "")
+            .replace('-', "")
+            .to_lowercase());
+    }
+
+    // 移动端尝试从 sysfs 读取 MAC 地址
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        // 尝试读取 wlan0 接口的 MAC 地址
+        let paths = [
+            "/sys/class/net/wlan0/address",
+            "/sys/class/net/eth0/address",
+            "/sys/class/net/rmnet_data0/address",
+        ];
+        for path in &paths {
+            if let Ok(mac) = std::fs::read_to_string(path) {
+                let mac = mac.trim();
+                if !mac.is_empty() && mac != "00:00:00:00:00:00" {
+                    return Ok(mac.replace(':', "").replace('-', "").to_lowercase());
+                }
+            }
+        }
+        Err("无法获取MAC地址：Android系统限制了MAC地址访问。请确保已连接校园网WiFi。".to_string())
+    }
 }
 
 /// 执行 Portal 认证登录
