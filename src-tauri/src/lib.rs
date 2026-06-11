@@ -9,14 +9,12 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![
-            commands::auth::perform_login,
-            commands::network::check_online,
-            commands::config::save_config,
-            commands::config::load_config,
-        ]);
+    let builder = tauri::Builder::default().invoke_handler(tauri::generate_handler![
+        commands::auth::perform_login,
+        commands::network::check_online,
+        commands::config::save_config,
+        commands::config::load_config,
+    ]);
 
     // 仅在桌面端启用系统托盘
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

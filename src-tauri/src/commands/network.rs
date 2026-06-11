@@ -1,5 +1,5 @@
 use crate::commands::auth::get_local_ip;
-use reqwest::{Client, StatusCode};
+use crate::commands::http;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -30,16 +30,24 @@ const CONNECTIVITY_PROBES: &[ConnectivityProbe] = &[
     },
 ];
 
-fn is_success_response(expectation: ProbeExpectation, status: StatusCode, body: &str) -> bool {
+fn is_success_response(expectation: ProbeExpectation, status: u16, body: &str) -> bool {
     match expectation {
-        ProbeExpectation::NoContent => status == StatusCode::NO_CONTENT && body.trim().is_empty(),
-        ProbeExpectation::ExactBody(expected) => status.is_success() && body.trim() == expected,
+        ProbeExpectation::NoContent => status == 204 && body.trim().is_empty(),
+        ProbeExpectation::ExactBody(expected) => {
+            (200..300).contains(&status) && body.trim() == expected
+        }
     }
 }
 
 /// 检查是否已连接到互联网
 #[tauri::command]
 pub async fn check_online() -> bool {
+    tauri::async_runtime::spawn_blocking(check_online_blocking)
+        .await
+        .unwrap_or(false)
+}
+
+fn check_online_blocking() -> bool {
     let local_ip = match get_local_ip() {
         Ok(ip) => ip,
         Err(_) => return false,
@@ -49,22 +57,16 @@ pub async fn check_online() -> bool {
         Err(_) => return false,
     };
 
-    let client = match Client::builder()
-        .timeout(Duration::from_secs(2))
-        .local_address(local_addr)
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-
     for probe in CONNECTIVITY_PROBES {
-        if let Ok(resp) = client.get(probe.url).send().await {
-            let status = resp.status();
-            if let Ok(body) = resp.text().await {
-                if is_success_response(probe.expectation, status, &body) {
-                    return true;
-                }
+        if let Ok(response) = http::get_text(
+            probe.url,
+            &[],
+            local_addr,
+            Duration::from_secs(2),
+            "Mozilla/5.0",
+        ) {
+            if is_success_response(probe.expectation, response.status, &response.body) {
+                return true;
             }
         }
     }
@@ -80,25 +82,21 @@ mod tests {
     fn accepts_exact_success_body() {
         assert!(is_success_response(
             ProbeExpectation::ExactBody("success"),
-            StatusCode::OK,
+            200,
             "success\n"
         ));
     }
 
     #[test]
     fn accepts_generate_204_no_content() {
-        assert!(is_success_response(
-            ProbeExpectation::NoContent,
-            StatusCode::NO_CONTENT,
-            ""
-        ));
+        assert!(is_success_response(ProbeExpectation::NoContent, 204, ""));
     }
 
     #[test]
     fn rejects_captive_portal_html_even_with_200() {
         assert!(!is_success_response(
             ProbeExpectation::ExactBody("success"),
-            StatusCode::OK,
+            200,
             "<html><title>Portal Login</title></html>"
         ));
     }
@@ -107,7 +105,7 @@ mod tests {
     fn rejects_captive_portal_body_for_generate_204() {
         assert!(!is_success_response(
             ProbeExpectation::NoContent,
-            StatusCode::OK,
+            200,
             "<html><title>Portal Login</title></html>"
         ));
     }
@@ -116,7 +114,7 @@ mod tests {
     fn rejects_non_success_status_for_exact_body() {
         assert!(!is_success_response(
             ProbeExpectation::ExactBody("success"),
-            StatusCode::FOUND,
+            302,
             "success"
         ));
     }

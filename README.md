@@ -50,6 +50,7 @@ auto_login_tauri/
 │   │   └── commands/
 │   │       ├── auth.rs         # Portal 认证登录命令
 │   │       ├── config.rs       # 配置读写命令
+│   │       ├── http.rs         # HTTP-only 客户端
 │   │       └── network.rs      # 网络连通性检测
 │   ├── Cargo.toml              # Rust 依赖配置
 │   ├── tauri.conf.json         # Tauri 应用配置
@@ -57,6 +58,7 @@ auto_login_tauri/
 │       └── default.json        # 权限声明
 ├── index.html                  # HTML 入口
 ├── package.json                # Node 项目配置
+├── scripts/                    # Android 构建辅助脚本
 ├── vite.config.ts              # Vite 构建配置
 └── tsconfig.json               # TypeScript 配置
 ```
@@ -114,6 +116,14 @@ bun tauri android init   # 初始化 Android 项目
 bun tauri android dev    # Android 开发调试
 bun tauri android build  # Android 构建 APK
 ```
+
+Tauri 生成的 release APK 默认未签名，手机文件管理器点击安装会失败。真机调试小体积 release 包时使用：
+
+```bash
+npm run android:build:signed
+```
+
+可安装产物位于 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-debugsigned.apk`。该包使用 Android debug keystore 签名，仅用于本地调试。
 
 ## 📖 使用说明
 

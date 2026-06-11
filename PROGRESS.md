@@ -74,13 +74,14 @@
 
 ## BUG-008 APK 体积过大
 
-- 表现：调试 APK 体积偏大，后续需要精简。
-- 复现步骤：检查 `src-tauri/gen/android/app/build/outputs/apk/...` 产物大小。
-- 代码位置：构建配置和依赖树，待分析。
-- 根因：暂未分析；debug APK 包含调试符号、通用 APK 可能包含多 ABI/生成文件。
-- 修复：暂不处理，后续单独做 release 体积审计。
-- 验证命令：待补充。
-- 状态：已记录，后续处理。
+- 表现：debug arm64 APK 约 163.49 MB，release unsigned APK 基线约 8.87 MB；release 包内 `lib/arm64-v8a/libcumt_auto_login_lib.so` 约 6.70 MB，是主要体积来源。
+- 复现步骤：执行 `npx tauri android build --target aarch64 --apk --ci` 后检查 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk`，并用 Zip 条目统计 APK 分项大小。
+- 代码位置：`src-tauri/Cargo.toml`、`src-tauri/src/commands/auth.rs`、`src-tauri/src/commands/network.rs`、`src-tauri/src/commands/http.rs`、`src-tauri/tauri.conf.json`、`scripts/patch-android-gradle.mjs`
+- 根因：debug APK 包含 native 调试符号，不适合作为分发体积基线；release APK 的主要成本来自应用直接引入的 `reqwest 0.12`/TLS/async HTTP 栈和 Android 资源未启用 shrink。`app-universal-release-unsigned.apk` 实测只包含 `arm64-v8a`，不是多 ABI 膨胀。
+- 修复：release 体积改以 APK 分项统计为准；移除未使用的 `tauri-plugin-shell` 和 shell capability；桌面端才启用 `tray-icon`，Android 基础 Tauri 依赖关闭默认 feature 并只保留 `wry`；移除直接 `regex` 依赖并改为手写 JSONP 切片；用 `std::net::TcpStream` + `socket2` 实现 HTTP-only GET，保留 WLAN 源地址绑定、超时、文本响应和 chunked 响应解析；移除直接 `reqwest 0.12`；移除不必要的 `staticlib` crate type；通过 `scripts/patch-android-gradle.mjs` 在生成的 Android release build block 中启用 `isShrinkResources = true`。
+- 验证命令：`npm run test` 通过；`cargo test --manifest-path src-tauri\Cargo.toml` 通过，23 个 Rust 单测；`npm run build` 通过；`cargo check --manifest-path src-tauri\Cargo.toml` 通过；`cargo check --manifest-path src-tauri\Cargo.toml --target aarch64-linux-android` 通过；`npx tauri android build --target aarch64 --apk --ci` 通过。
+- 体积结果：release APK 从 9,304,797 bytes（8.87 MB）降至 5,500,538 bytes（5.25 MB），减少 3,804,259 bytes，约 40.88%；native `.so` 从 6,698,984 bytes 降至 3,600,288 bytes；启用 resource shrink 后 `resources.arsc` 从 1,012,644 bytes 降至 603,392 bytes，XML 从 630 个降至 345 个，图片从 217 个降至 171 个。
+- 状态：代码与 release 构建已验证；HTTP-only 客户端的真实 Portal 登录和已认证 WLAN 联网检测需在 Android 真机校园网环境复测。
 
 ## BUG-009 Android 应用沙盒拒绝外部 `ip` 命令的 netlink 访问
 
@@ -131,6 +132,16 @@
 - 修复：前端为 Portal 登录增加同账号在途请求合并，若相同账号、密码、运营商的登录请求已在进行中，后续提交等待同一个请求而不再发第二个 `perform_login`；同时增加登录 token，旧请求不能覆盖新请求状态。Rust 解析层把 `ret_code=2` / `code=2` 识别为“已在线，无需重复登录”，避免重复认证响应被展示成失败。
 - 验证命令：`npm run test` 通过，新增“自动登录在途时手动提交同账号只调用一次 `perform_login`”单测；`npm run build` 通过；`cargo test --manifest-path src-tauri\Cargo.toml` 通过，新增 `ret_code=\"2\"` 已在线解析单测；`cargo check --manifest-path src-tauri\Cargo.toml` 通过；`cargo check --manifest-path src-tauri\Cargo.toml --target aarch64-linux-android` 通过；`npx tauri android build --debug --target aarch64 --apk --ci` 通过；覆盖安装 APK 后已认证 WLAN 启动回归正常且 logcat 未匹配已知错误。
 - 状态：代码已修复并通过竞态单测/构建/安装验证；未认证 WLAN 的真实首次登录场景待用户复测。
+
+## BUG-014 release APK 未签名导致手机解析安装失败
+
+- 表现：手机文件管理器点击 release APK 提示“解析软件包时出现问题。（33）详细信息：packageInfo is null”。
+- 复现步骤：将 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk` 复制到手机并点击安装。
+- 代码位置：`package.json`、`scripts/sign-android-release-debug.mjs`、`README.md`
+- 根因：`npx tauri android build --target aarch64 --apk --ci` 生成的 release APK 文件名为 `app-universal-release-unsigned.apk`，未包含 APK 签名块；`apksigner verify --verbose` 报 `DOES NOT VERIFY` 和 `Missing META-INF/MANIFEST.MF`，Android/MIUI 文件安装器无法解析为可安装包。
+- 修复：新增 `scripts/sign-android-release-debug.mjs`，使用 Android SDK 最新 `apksigner` 和本机 Android debug keystore 对 unsigned release APK 签名，输出 `app-universal-release-debugsigned.apk`；新增 `npm run android:sign:release` 和 `npm run android:build:signed`；README 标明可安装 release 调试包路径。该 debug 签名仅用于真机调试，不用于正式分发。
+- 验证命令：`npm run android:sign:release` 通过并输出 `app-universal-release-debugsigned.apk`；`apksigner verify --verbose ...\app-universal-release-debugsigned.apk` 显示 v2/v3 签名通过；`adb install -r src-tauri\gen\android\app\build\outputs\apk\universal\release\app-universal-release-debugsigned.apk` 成功；`adb shell monkey -p com.cumt.autologin -c android.intent.category.LAUNCHER 1` 成功注入启动事件。
+- 状态：已修复并通过签名校验、adb 安装和启动冒烟验证；用户可再用文件管理器点击 `app-universal-release-debugsigned.apk` 复测原始解析失败路径。
 
 ## 环境与构建基线
 

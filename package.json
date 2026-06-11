@@ -11,11 +11,12 @@
     "tauri": "tauri",
     "android:dev": "tauri android dev",
     "android:build": "tauri android build",
+    "android:build:signed": "tauri android build --target aarch64 --apk --ci && node scripts/sign-android-release-debug.mjs",
+    "android:sign:release": "node scripts/sign-android-release-debug.mjs",
     "android:init": "tauri android init"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
-    "@tauri-apps/plugin-shell": "^2.2.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

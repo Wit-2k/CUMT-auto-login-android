@@ -1,6 +1,5 @@
+use crate::commands::http;
 use base64::Engine;
-use regex::Regex;
-use reqwest::Client;
 use serde_json::Value;
 use std::net::IpAddr;
 #[cfg(any(test, target_os = "android"))]
@@ -126,11 +125,16 @@ fn get_mac_address() -> Result<String, String> {
 }
 
 fn extract_jsonp_payload(text: &str) -> Result<&str, String> {
-    let re = Regex::new(r"^[^(]*\((.*)\)\s*$").map_err(|e| format!("正则表达式错误: {}", e))?;
-    re.captures(text)
-        .and_then(|caps| caps.get(1))
-        .map(|m| m.as_str())
-        .ok_or_else(|| format!("解析服务器响应失败: {}", text))
+    let text = text.trim();
+    let start = text
+        .find('(')
+        .ok_or_else(|| format!("解析服务器响应失败: {}", text))?;
+    let end = text
+        .rfind(')')
+        .filter(|end| *end > start)
+        .ok_or_else(|| format!("解析服务器响应失败: {}", text))?;
+
+    Ok(&text[start + 1..end])
 }
 
 fn decode_message(message: &str) -> String {
@@ -272,11 +276,26 @@ pub async fn perform_login(
     password: String,
     operator: String,
 ) -> Result<(bool, String), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        perform_login_blocking(username, password, operator)
+    })
+    .await
+    .map_err(|e| format!("登录任务失败: {}", e))?
+}
+
+fn perform_login_blocking(
+    username: String,
+    password: String,
+    operator: String,
+) -> Result<(bool, String), String> {
     let full_account = format!("{}{}", username, operator);
 
     // 获取网络信息
     let user_ip = get_local_ip()?;
     let user_mac = get_mac_address()?;
+    let local_addr = user_ip
+        .parse::<IpAddr>()
+        .map_err(|e| format!("本机IP地址无效: {}", e))?;
 
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -284,6 +303,7 @@ pub async fn perform_login(
         .as_millis() as u64;
 
     let callback = format!("dr{}", timestamp);
+    let timestamp_param = timestamp.to_string();
 
     // 构建请求参数
     let params = [
@@ -298,33 +318,19 @@ pub async fn perform_login(
         ("wlan_ac_ip", "10.2.4.1"),
         ("wlan_ac_name", "NAS"),
         ("jsVersion", "3.0"),
-        ("_", &timestamp.to_string()),
+        ("_", timestamp_param.as_str()),
     ];
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(5))
-        .local_address(
-            user_ip
-                .parse::<IpAddr>()
-                .map_err(|e| format!("本机IP地址无效: {}", e))?,
-        )
-        .build()
-        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+    let response = http::get_text(
+        "http://10.2.5.251:801/eportal/",
+        &params,
+        local_addr,
+        Duration::from_secs(5),
+        "Mozilla/5.0",
+    )
+    .map_err(|_| "网络请求失败，认证服务器无响应。".to_string())?;
 
-    let response = client
-        .get("http://10.2.5.251:801/eportal/")
-        .query(&params)
-        .header("User-Agent", "Mozilla/5.0")
-        .send()
-        .await
-        .map_err(|_| "网络请求失败，认证服务器无响应。".to_string())?;
-
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("读取响应失败: {}", e))?;
-
-    parse_login_response(&text)
+    parse_login_response(&response.body)
 }
 
 #[cfg(test)]
