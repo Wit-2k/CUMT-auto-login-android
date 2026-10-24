@@ -1,12 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-}
-
 body {
   margin: 0;
   padding: 0;

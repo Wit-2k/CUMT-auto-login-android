@@ -9,7 +9,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{ffi::CStr, ptr};
 
 fn normalize_mac(mac: &str) -> Option<String> {
-    let normalized = mac.trim().replace(':', "").replace('-', "").to_lowercase();
+    let normalized = mac.trim().replace([':', '-'], "").to_lowercase();
     let invalid = normalized.is_empty()
         || normalized == "000000000000"
         || normalized == "020000000000"
@@ -29,7 +29,7 @@ pub(crate) fn get_local_ip() -> Result<String, String> {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
         let ip = local_ip_address::local_ip().map_err(|e| format!("无法获取网络信息: {}", e))?;
-        return Ok(ip.to_string());
+        Ok(ip.to_string())
     }
 
     // 移动端只接受 WLAN 地址，避免移动数据导致“已联网”的假成功。
@@ -102,7 +102,7 @@ fn get_mac_address() -> Result<String, String> {
         let mac = mac_address::get_mac_address()
             .map_err(|e| format!("无法获取MAC地址: {}", e))?
             .ok_or_else(|| "未找到网络接口".to_string())?;
-        return normalize_mac(&mac.to_string()).ok_or_else(|| "获取到的MAC地址无效".to_string());
+        normalize_mac(&mac.to_string()).ok_or_else(|| "获取到的MAC地址无效".to_string())
     }
 
     // 移动端尽力从 sysfs 读取 MAC 地址；读取失败时不阻塞登录，让 Portal 返回明确结果。

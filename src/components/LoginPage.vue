@@ -54,13 +54,6 @@ onMounted(async () => {
     // 加载配置失败，使用默认值
   }
 });
-
-// 暴露 resetLoading 方法给父组件
-defineExpose({
-  resetLoading: () => {
-    loading.value = false;
-  },
-});
 </script>
 
 <template>
