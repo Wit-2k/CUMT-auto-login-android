@@ -1,7 +1,7 @@
 {
   "name": "cumt-auto-login",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,11 +9,12 @@
     "test": "vitest run",
     "preview": "vite preview",
     "tauri": "tauri",
-    "android:dev": "tauri android dev",
+    "android:dev": "node scripts/sync-android-icons.mjs && tauri android dev",
     "android:build": "tauri android build",
     "android:build:signed": "tauri android build --target aarch64 --apk --ci && node scripts/sign-android-release-debug.mjs",
     "android:sign:release": "node scripts/sign-android-release-debug.mjs",
-    "android:init": "tauri android init"
+    "android:icons": "node scripts/sync-android-icons.mjs",
+    "android:init": "tauri android init && node scripts/sync-android-icons.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
